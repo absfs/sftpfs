@@ -107,9 +107,74 @@ func main() {
 }
 ```
 
+### Production Configuration with Host Key Verification
+
+For production use, you should implement proper host key verification to prevent man-in-the-middle attacks:
+
+```go
+package main
+
+import (
+    "log"
+    "net"
+    "os"
+
+    "github.com/absfs/sftpfs"
+    "golang.org/x/crypto/ssh"
+    "golang.org/x/crypto/ssh/knownhosts"
+)
+
+func main() {
+    // Load known hosts file
+    hostKeyCallback, err := knownhosts.New(os.ExpandEnv("$HOME/.ssh/known_hosts"))
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Read private key
+    key, err := os.ReadFile(os.ExpandEnv("$HOME/.ssh/id_rsa"))
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    config := &sftpfs.Config{
+        Host:            "example.com:22",
+        User:            "username",
+        Key:             key,
+        HostKeyCallback: hostKeyCallback,
+    }
+
+    fs, err := sftpfs.New(config)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer fs.Close()
+
+    // Use filesystem securely
+}
+```
+
+Alternatively, for a fixed host key:
+
+```go
+// Fixed host key verification
+fixedHostKey := "..." // Your server's public key
+pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(fixedHostKey))
+if err != nil {
+    log.Fatal(err)
+}
+
+config := &sftpfs.Config{
+    Host: "example.com:22",
+    User: "username",
+    Password: "password",
+    HostKeyCallback: ssh.FixedHostKey(pubKey),
+}
+```
+
 ## Security Note
 
-The current implementation uses `ssh.InsecureIgnoreHostKey()` which skips host key verification. For production use, you should implement proper host key verification to prevent man-in-the-middle attacks.
+By default, if no `HostKeyCallback` is provided, the library uses `ssh.InsecureIgnoreHostKey()` which skips host key verification. This is **NOT secure** and vulnerable to man-in-the-middle attacks. Always provide a proper `HostKeyCallback` for production deployments.
 
 ## absfs
 

@@ -13,17 +13,18 @@ import (
 
 // FileSystem implements absfs.Filer for SFTP protocol.
 type FileSystem struct {
-	client *sftp.Client
+	client    *sftp.Client
 	sshClient *ssh.Client
 }
 
 // Config contains the configuration for connecting to an SFTP server.
 type Config struct {
-	Host     string        // Host address (e.g., "example.com:22")
-	User     string        // Username for authentication
-	Password string        // Password for authentication (if using password auth)
-	Key      []byte        // Private key for authentication (if using key auth)
-	Timeout  time.Duration // Connection timeout
+	Host            string              // Host address (e.g., "example.com:22")
+	User            string              // Username for authentication
+	Password        string              // Password for authentication (if using password auth)
+	Key             []byte              // Private key for authentication (if using key auth)
+	Timeout         time.Duration       // Connection timeout
+	HostKeyCallback ssh.HostKeyCallback // Host key verification callback (defaults to InsecureIgnoreHostKey if not set)
 }
 
 // New creates a new SFTP filesystem with the given configuration.
@@ -33,11 +34,19 @@ func New(config *Config) (*FileSystem, error) {
 		config.Timeout = 30 * time.Second
 	}
 
+	// Set default host key callback if not specified
+	hostKeyCallback := config.HostKeyCallback
+	if hostKeyCallback == nil {
+		// WARNING: This skips host key verification and is vulnerable to MITM attacks
+		// For production use, provide a proper HostKeyCallback in the Config
+		hostKeyCallback = ssh.InsecureIgnoreHostKey()
+	}
+
 	// Build SSH client config
 	sshConfig := &ssh.ClientConfig{
 		User:            config.User,
 		Timeout:         config.Timeout,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // WARNING: This skips host key verification
+		HostKeyCallback: hostKeyCallback,
 	}
 
 	// Add authentication method
@@ -67,7 +76,7 @@ func New(config *Config) (*FileSystem, error) {
 	}
 
 	return &FileSystem{
-		client: client,
+		client:    client,
 		sshClient: sshClient,
 	}, nil
 }
@@ -89,12 +98,25 @@ func (fs *FileSystem) OpenFile(name string, flag int, perm os.FileMode) (absfs.F
 	if err != nil {
 		return nil, err
 	}
+
+	// If creating a new file, set the permissions
+	if flag&os.O_CREATE != 0 {
+		if err := fs.client.Chmod(name, perm); err != nil {
+			file.Close()
+			return nil, err
+		}
+	}
+
 	return &File{file: file, name: name, client: fs.client}, nil
 }
 
 // Mkdir creates a directory on the SFTP server.
 func (fs *FileSystem) Mkdir(name string, perm os.FileMode) error {
-	return fs.client.Mkdir(name)
+	if err := fs.client.Mkdir(name); err != nil {
+		return err
+	}
+	// Set the permissions after creation
+	return fs.client.Chmod(name, perm)
 }
 
 // Remove removes a file or empty directory from the SFTP server.

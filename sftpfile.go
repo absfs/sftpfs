@@ -1,6 +1,7 @@
 package sftpfs
 
 import (
+	"io"
 	"os"
 
 	"github.com/pkg/sftp"
@@ -8,9 +9,11 @@ import (
 
 // File wraps an sftp.File to implement absfs.File interface.
 type File struct {
-	file   *sftp.File
-	name   string
-	client *sftp.Client
+	file       *sftp.File
+	name       string
+	client     *sftp.Client
+	dirEntries []os.FileInfo // Cached directory entries for Readdir
+	readdirPos int           // Current position in directory listing
 }
 
 // Name returns the name of the file.
@@ -72,22 +75,37 @@ func (f *File) Truncate(size int64) error {
 
 // Readdir reads directory entries.
 func (f *File) Readdir(n int) ([]os.FileInfo, error) {
-	// Use the client's ReadDir to get directory entries
-	entries, err := f.client.ReadDir(f.name)
-	if err != nil {
-		return nil, err
+	// Load directory entries on first call
+	if f.dirEntries == nil {
+		entries, err := f.client.ReadDir(f.name)
+		if err != nil {
+			return nil, err
+		}
+		f.dirEntries = entries
+		f.readdirPos = 0
 	}
 
-	// If n <= 0, return all entries
+	// If n <= 0, return all remaining entries
 	if n <= 0 {
-		return entries, nil
+		result := f.dirEntries[f.readdirPos:]
+		f.readdirPos = len(f.dirEntries)
+		return result, nil
 	}
 
-	// Otherwise return up to n entries
-	if n > len(entries) {
-		n = len(entries)
+	// Return up to n entries starting from current position
+	remaining := len(f.dirEntries) - f.readdirPos
+	if remaining == 0 {
+		return nil, io.EOF
 	}
-	return entries[:n], nil
+
+	if n > remaining {
+		n = remaining
+	}
+
+	result := f.dirEntries[f.readdirPos : f.readdirPos+n]
+	f.readdirPos += n
+
+	return result, nil
 }
 
 // Readdirnames reads directory entry names.
