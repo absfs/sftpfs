@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/absfs/absfs"
 	"github.com/pkg/sftp"
 )
 
@@ -121,3 +122,6 @@ func (f *File) Readdirnames(n int) ([]string, error) {
 	}
 	return names, nil
 }
+
+// Compile-time verification that File implements absfs.File
+var _ absfs.File = (*File)(nil)
