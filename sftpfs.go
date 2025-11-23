@@ -5,6 +5,7 @@ package sftpfs
 import (
 	"fmt"
 	"os"
+	"path"
 	"time"
 
 	"github.com/absfs/absfs"
@@ -13,11 +14,11 @@ import (
 )
 
 // wrapError wraps an error with operation and path context
-func wrapError(op, path string, err error) error {
+func wrapError(op, filePath string, err error) error {
 	if err == nil {
 		return nil
 	}
-	return fmt.Errorf("sftpfs.%s(%s): %w", op, path, err)
+	return fmt.Errorf("sftpfs.%s(%s): %w", op, filePath, err)
 }
 
 // wrapErrorf wraps an error with formatted context
@@ -224,39 +225,39 @@ func DialWithKey(host, user string, privateKey []byte) (*FileSystem, error) {
 }
 
 // MkdirAll creates a directory named path, along with any necessary parents.
-func (fs *FileSystem) MkdirAll(path string, perm os.FileMode) error {
+func (fs *FileSystem) MkdirAll(name string, perm os.FileMode) error {
 	// Walk up the path and create each directory
-	return wrapError("MkdirAll", path, fs.client.MkdirAll(path))
+	return wrapError("MkdirAll", name, fs.client.MkdirAll(name))
 }
 
 // RemoveAll removes path and any children it contains.
-func (fs *FileSystem) RemoveAll(path string) error {
+func (fs *FileSystem) RemoveAll(name string) error {
 	// First check if path exists and what it is
-	info, err := fs.client.Stat(path)
+	info, err := fs.client.Stat(name)
 	if err != nil {
-		return wrapError("RemoveAll.Stat", path, err)
+		return wrapError("RemoveAll.Stat", name, err)
 	}
 
 	if !info.IsDir() {
 		// If it's a file, just remove it
-		return wrapError("RemoveAll", path, fs.client.Remove(path))
+		return wrapError("RemoveAll", name, fs.client.Remove(name))
 	}
 
 	// For directories, we need to recursively remove contents
-	return wrapError("RemoveAll", path, fs.removeAllDir(path))
+	return wrapError("RemoveAll", name, fs.removeAllDir(name))
 }
 
 // removeAllDir recursively removes a directory and all its contents
-func (fs *FileSystem) removeAllDir(path string) error {
+func (fs *FileSystem) removeAllDir(dirPath string) error {
 	// Read directory contents
-	entries, err := fs.client.ReadDir(path)
+	entries, err := fs.client.ReadDir(dirPath)
 	if err != nil {
 		return err
 	}
 
 	// Remove each entry
 	for _, entry := range entries {
-		fullPath := path + "/" + entry.Name()
+		fullPath := path.Join(dirPath, entry.Name())
 		if entry.IsDir() {
 			// Recursively remove subdirectory
 			if err := fs.removeAllDir(fullPath); err != nil {
@@ -271,7 +272,7 @@ func (fs *FileSystem) removeAllDir(path string) error {
 	}
 
 	// Finally remove the directory itself
-	return fs.client.Remove(path)
+	return fs.client.Remove(dirPath)
 }
 
 // Open opens the named file for reading.
