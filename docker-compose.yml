@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  sftp:
+    image: atmoz/sftp:latest
+    ports:
+      - "2222:22"
+    volumes:
+      - ./testdata/ssh:/home/testuser/.ssh:ro
+      - ./testdata/upload:/home/testuser/upload
+    command: testuser:testpass:1001:100

@@ -34,3 +34,10 @@ jobs:
       run: |
         gofmt -l .
         test -z "$(gofmt -l .)"
+
+    - name: Integration tests
+      run: |
+        docker-compose up -d
+        sleep 3
+        go test -v -race -tags=integration -timeout 2m || true
+        docker-compose down -v
