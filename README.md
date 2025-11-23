@@ -8,7 +8,11 @@ The `sftpfs` package implements an `absfs.Filer` for SFTP (SSH File Transfer Pro
 
 - **Secure file operations**: All operations encrypted over SSH
 - **Multiple authentication methods**: Password and SSH key authentication
-- **Standard interface**: Implements `absfs.Filer` for seamless integration
+- **Full filesystem interface**: Implements `absfs.FileSystem` with helper methods (MkdirAll, RemoveAll, Open, Create, etc.)
+- **Symbolic link support**: Complete implementation of `absfs.SymLinker` interface
+- **Connection resilience**: Automatic retry with exponential backoff for transient failures
+- **Enhanced error context**: Detailed error messages with operation and path information
+- **Production ready**: Comprehensive test suite with unit and integration tests
 
 ## Install
 
@@ -170,6 +174,166 @@ config := &sftpfs.Config{
     Password: "password",
     HostKeyCallback: ssh.FixedHostKey(pubKey),
 }
+```
+
+### Connection Retry Configuration
+
+Configure automatic retry with exponential backoff for handling transient network issues:
+
+```go
+package main
+
+import (
+    "log"
+    "time"
+
+    "github.com/absfs/sftpfs"
+)
+
+func main() {
+    config := &sftpfs.Config{
+        Host:       "example.com:22",
+        User:       "username",
+        Password:   "password",
+        MaxRetries: 5,                // Retry up to 5 times (default: 3)
+        RetryDelay: 2 * time.Second,  // Initial delay of 2 seconds (default: 1s)
+        Timeout:    30 * time.Second, // Connection timeout (default: 30s)
+    }
+
+    fs, err := sftpfs.New(config)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer fs.Close()
+
+    // Connection will automatically retry with exponential backoff:
+    // Attempt 1: immediate
+    // Attempt 2: after 2s
+    // Attempt 3: after 4s
+    // Attempt 4: after 8s
+    // Attempt 5: after 16s
+}
+```
+
+### Working with Symbolic Links
+
+The filesystem supports full symbolic link operations:
+
+```go
+package main
+
+import (
+    "log"
+
+    "github.com/absfs/sftpfs"
+)
+
+func main() {
+    fs, err := sftpfs.Dial("example.com:22", "username", "password")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer fs.Close()
+
+    // Create a symbolic link
+    err = fs.Symlink("/path/to/target", "/path/to/link")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Read the link target
+    target, err := fs.Readlink("/path/to/link")
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Printf("Link points to: %s", target)
+
+    // Get link info without following
+    info, err := fs.Lstat("/path/to/link")
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Printf("Link info: %v", info)
+}
+```
+
+### Filesystem Helper Methods
+
+Use convenient helper methods for common operations:
+
+```go
+package main
+
+import (
+    "log"
+
+    "github.com/absfs/sftpfs"
+)
+
+func main() {
+    fs, err := sftpfs.Dial("example.com:22", "username", "password")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer fs.Close()
+
+    // Create nested directories in one call
+    err = fs.MkdirAll("/path/to/nested/dir", 0755)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Remove a directory and all its contents
+    err = fs.RemoveAll("/path/to/directory")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Open file for reading (convenience method)
+    f, err := fs.Open("/path/to/file.txt")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer f.Close()
+
+    // Create or truncate a file (convenience method)
+    f2, err := fs.Create("/path/to/new_file.txt")
+    if err != nil {
+        log.Fatal(err)
+    }
+    f2.Write([]byte("Hello, World!"))
+    f2.Close()
+
+    // Working directory operations
+    wd, _ := fs.Getwd()
+    log.Printf("Current directory: %s", wd)
+
+    fs.Chdir("/home/user")
+    wd, _ = fs.Getwd()
+    log.Printf("New directory: %s", wd)
+}
+```
+
+## Testing
+
+Run unit tests:
+```bash
+go test -v
+```
+
+Run integration tests (requires Docker):
+```bash
+make test-integration
+```
+
+Run all tests:
+```bash
+make test
+```
+
+Run benchmarks:
+```bash
+go test -bench=. -benchmem
 ```
 
 ## Security Note

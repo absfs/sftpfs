@@ -187,12 +187,65 @@ func TestFileSync(t *testing.T) {
 
 // mockFileInfo implements os.FileInfo for testing
 type mockFileInfo struct {
-	name string
+	name  string
+	isDir bool
 }
 
 func (m *mockFileInfo) Name() string       { return m.name }
 func (m *mockFileInfo) Size() int64        { return 0 }
 func (m *mockFileInfo) Mode() os.FileMode  { return 0644 }
 func (m *mockFileInfo) ModTime() time.Time { return time.Now() }
-func (m *mockFileInfo) IsDir() bool        { return false }
+func (m *mockFileInfo) IsDir() bool        { return m.isDir }
 func (m *mockFileInfo) Sys() interface{}   { return nil }
+
+func TestSeparator(t *testing.T) {
+	fs := &FileSystem{}
+	if fs.Separator() != '/' {
+		t.Errorf("Expected /, got %c", fs.Separator())
+	}
+}
+
+func TestListSeparator(t *testing.T) {
+	fs := &FileSystem{}
+	if fs.ListSeparator() != ':' {
+		t.Errorf("Expected :, got %c", fs.ListSeparator())
+	}
+}
+
+func TestGetwdDefault(t *testing.T) {
+	fs := &FileSystem{cwd: "/"}
+	dir, err := fs.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd failed: %v", err)
+	}
+	if dir != "/" {
+		t.Errorf("Expected /, got %s", dir)
+	}
+}
+
+func TestTempDir(t *testing.T) {
+	fs := &FileSystem{}
+	if fs.TempDir() != "/tmp" {
+		t.Errorf("Expected /tmp, got %s", fs.TempDir())
+	}
+}
+
+func TestSymlinkSignature(t *testing.T) {
+	// Test that Symlink function exists with correct signature
+	var _ func(string, string) error = (&FileSystem{}).Symlink
+}
+
+func TestReadlinkSignature(t *testing.T) {
+	// Test that Readlink function exists with correct signature
+	var _ func(string) (string, error) = (&FileSystem{}).Readlink
+}
+
+func TestLstatSignature(t *testing.T) {
+	// Test that Lstat function exists with correct signature
+	var _ func(string) (os.FileInfo, error) = (&FileSystem{}).Lstat
+}
+
+func TestLchownSignature(t *testing.T) {
+	// Test that Lchown function exists with correct signature
+	var _ func(string, int, int) error = (&FileSystem{}).Lchown
+}
