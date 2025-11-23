@@ -167,3 +167,6 @@ func DialWithKey(host, user string, privateKey []byte) (*FileSystem, error) {
 		Key:  privateKey,
 	})
 }
+
+// Compile-time verification that FileSystem implements absfs.Filer
+var _ absfs.Filer = (*FileSystem)(nil)
