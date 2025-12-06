@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  sftp:
+    image: atmoz/sftp:alpine
+    container_name: sftpfs-test-server
+    ports:
+      - "2222:22"
+    command: testuser:testpass:1001
+    volumes:
+      - sftp_data:/home/testuser/data
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "22"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  sftp_data:

@@ -2,15 +2,13 @@ package sftpfs
 
 import (
 	"os"
-
-	"github.com/pkg/sftp"
 )
 
 // File wraps an sftp.File to implement absfs.File interface.
 type File struct {
-	file   *sftp.File
+	file   sftpFileInterface
 	name   string
-	client *sftp.Client
+	client sftpClientInterface
 }
 
 // Name returns the name of the file.

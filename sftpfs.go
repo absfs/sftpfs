@@ -13,8 +13,8 @@ import (
 
 // FileSystem implements absfs.Filer for SFTP protocol.
 type FileSystem struct {
-	client *sftp.Client
-	sshClient *ssh.Client
+	client    sftpClientInterface
+	sshClient sshClientInterface
 }
 
 // Config contains the configuration for connecting to an SFTP server.
@@ -67,9 +67,17 @@ func New(config *Config) (*FileSystem, error) {
 	}
 
 	return &FileSystem{
-		client: client,
+		client:    &sftpClientWrapper{client: client},
 		sshClient: sshClient,
 	}, nil
+}
+
+// newWithClients creates a FileSystem with injected clients for testing.
+func newWithClients(sftpClient sftpClientInterface, sshClient sshClientInterface) *FileSystem {
+	return &FileSystem{
+		client:    sftpClient,
+		sshClient: sshClient,
+	}
 }
 
 // Close closes the SFTP connection.
