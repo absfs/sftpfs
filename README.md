@@ -1,7 +1,9 @@
 # SftpFs - SFTP FileSystem
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/absfs/sftpfs/blob/master/LICENSE)
+[![Go Reference](https://pkg.go.dev/badge/github.com/absfs/sftpfs.svg)](https://pkg.go.dev/github.com/absfs/sftpfs)
 [![Go Report Card](https://goreportcard.com/badge/github.com/absfs/sftpfs)](https://goreportcard.com/report/github.com/absfs/sftpfs)
+[![CI](https://github.com/absfs/sftpfs/actions/workflows/ci.yml/badge.svg)](https://github.com/absfs/sftpfs/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 The `sftpfs` package implements an `absfs.Filer` for SFTP (SSH File Transfer Protocol). It provides secure file operations over SSH using the `github.com/pkg/sftp` library.
 
