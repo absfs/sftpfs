@@ -4,12 +4,14 @@ go 1.21
 
 require (
 	github.com/absfs/absfs v0.0.0-20251109181304-77e2f9ac4448
+	github.com/absfs/fstesting v0.0.0-20251207001735-c9d62652ff82
+	github.com/absfs/memfs v0.0.0-20251208202300-cbb7a1d8f473
 	github.com/pkg/sftp v1.13.6
 	golang.org/x/crypto v0.17.0
 )
 
 require (
-	github.com/absfs/fstesting v0.0.0-20251206231118-7a50ca2cce8a // indirect
+	github.com/absfs/inode v0.0.0-20251208170702-9db24ab95ae4 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
 )

@@ -5,15 +5,20 @@
 [![CI](https://github.com/absfs/sftpfs/actions/workflows/ci.yml/badge.svg)](https://github.com/absfs/sftpfs/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-The `sftpfs` package implements an `absfs.Filer` for SFTP (SSH File Transfer Protocol). It provides secure file operations over SSH using the `github.com/pkg/sftp` library.
+The `sftpfs` package provides bidirectional SFTP support for the absfs ecosystem:
+
+- **Client Mode**: Access remote SFTP servers as an `absfs.FileSystem`
+- **Server Mode**: Serve any `absfs.FileSystem` over SFTP protocol
 
 ## Features
 
+- **Bidirectional**: Both client and server implementations
 - **Secure file operations**: All operations encrypted over SSH
 - **Multiple authentication methods**: Password and SSH key authentication
-- **Standard interface**: Implements `absfs.Filer` for seamless integration
+- **Standard interface**: Client implements `absfs.Filer` for seamless integration
 - **Full file operations**: Read, write, seek, truncate, and more
 - **Directory operations**: Create, remove, and list directories
+- **Server mode**: Expose any absfs filesystem via SFTP
 
 ## Install
 
@@ -21,7 +26,7 @@ The `sftpfs` package implements an `absfs.Filer` for SFTP (SSH File Transfer Pro
 go get github.com/absfs/sftpfs
 ```
 
-## Example Usage
+## Client Usage
 
 ### Password Authentication
 
@@ -112,6 +117,110 @@ func main() {
 }
 ```
 
+## Server Usage
+
+The server mode allows you to expose any `absfs.FileSystem` over SFTP protocol. This is useful for creating custom file servers, testing, or bridging different storage backends.
+
+### Basic Server
+
+```go
+package main
+
+import (
+    "crypto/rand"
+    "crypto/rsa"
+    "log"
+    "net"
+
+    "github.com/absfs/memfs"
+    "github.com/absfs/sftpfs"
+    "golang.org/x/crypto/ssh"
+)
+
+func main() {
+    // Create a filesystem to serve (could be any absfs.FileSystem)
+    fs, err := memfs.NewFS()
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Generate a host key (in production, load from file)
+    privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+    if err != nil {
+        log.Fatal(err)
+    }
+    signer, err := ssh.NewSignerFromKey(privateKey)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Create SFTP server with password authentication
+    server := sftpfs.NewServer(fs, &sftpfs.ServerConfig{
+        HostKeys: []ssh.Signer{signer},
+        PasswordCallback: sftpfs.SimplePasswordAuth("admin", "secret"),
+    })
+
+    // Listen and serve
+    listener, err := net.Listen("tcp", ":2222")
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Println("SFTP server listening on :2222")
+    log.Fatal(server.Serve(listener))
+}
+```
+
+### Multi-User Authentication
+
+```go
+users := map[string]string{
+    "alice": "password1",
+    "bob":   "password2",
+    "carol": "password3",
+}
+
+server := sftpfs.NewServer(fs, &sftpfs.ServerConfig{
+    HostKeys:         []ssh.Signer{signer},
+    PasswordCallback: sftpfs.MultiUserPasswordAuth(users),
+})
+```
+
+### Public Key Authentication
+
+```go
+server := sftpfs.NewServer(fs, &sftpfs.ServerConfig{
+    HostKeys: []ssh.Signer{hostKey},
+    PublicKeyCallback: func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+        // Verify the public key against your authorized keys
+        authorizedKey, _, _, _, err := ssh.ParseAuthorizedKey(authorizedKeysData)
+        if err != nil {
+            return nil, err
+        }
+
+        if ssh.KeysEqual(key, authorizedKey) {
+            return nil, nil // Authentication successful
+        }
+        return nil, fmt.Errorf("unknown public key")
+    },
+})
+```
+
+### Serving Different Filesystems
+
+```go
+// Serve local files
+osfs, _ := osfs.NewFS()
+server := sftpfs.NewServer(osfs, config)
+
+// Serve in-memory files
+memfs, _ := memfs.NewFS()
+server := sftpfs.NewServer(memfs, config)
+
+// Serve composed filesystems
+union := unionfs.New(baseFS, overlayFS)
+server := sftpfs.NewServer(union, config)
+```
+
 ## Testing
 
 ### Unit Tests
@@ -175,7 +284,9 @@ if err != nil {
 
 ## API Reference
 
-### FileSystem Methods
+### Client Types and Methods
+
+#### FileSystem Methods
 
 | Method | Description |
 |--------|-------------|
@@ -192,7 +303,7 @@ if err != nil {
 | `Chtimes(name string, atime, mtime time.Time)` | Change file times |
 | `Chown(name string, uid, gid int)` | Change file ownership |
 
-### File Methods
+#### File Methods
 
 | Method | Description |
 |--------|-------------|
@@ -209,6 +320,36 @@ if err != nil {
 | `Truncate(size int64)` | Truncate file to size |
 | `Readdir(n int)` | Read directory entries |
 | `Readdirnames(n int)` | Read directory entry names |
+
+### Server Types and Methods
+
+#### Server
+
+| Method | Description |
+|--------|-------------|
+| `NewServer(fs absfs.FileSystem, config *ServerConfig)` | Create a new SFTP server |
+| `Serve(listener net.Listener)` | Accept connections and serve SFTP |
+| `ServeConn(conn net.Conn)` | Handle a single connection |
+| `SSHConfig()` | Get the underlying SSH server config |
+
+#### ServerConfig
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `HostKeys` | `[]ssh.Signer` | SSH host keys (at least one required) |
+| `PasswordCallback` | `func(ssh.ConnMetadata, []byte) (*ssh.Permissions, error)` | Password authentication handler |
+| `PublicKeyCallback` | `func(ssh.ConnMetadata, ssh.PublicKey) (*ssh.Permissions, error)` | Public key authentication handler |
+| `NoClientAuth` | `bool` | Allow connections without authentication (testing only) |
+| `MaxAuthTries` | `int` | Maximum authentication attempts (default: 6) |
+| `ServerVersion` | `string` | SSH server version string |
+
+#### Helper Functions
+
+| Function | Description |
+|----------|-------------|
+| `SimplePasswordAuth(user, pass string)` | Create single-user password callback |
+| `MultiUserPasswordAuth(users map[string]string)` | Create multi-user password callback |
+| `NewServerHandler(fs absfs.FileSystem)` | Create low-level SFTP handlers |
 
 ## absfs
 
