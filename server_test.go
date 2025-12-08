@@ -255,24 +255,29 @@ func TestServer_Remove(t *testing.T) {
 		t.Error("File should not exist after remove")
 	}
 
-	// Note: Directory removal test is skipped because memfs has a bug where
-	// it incorrectly reports "directory not empty" for empty directories.
-	// This is tracked as an upstream issue in memfs.
-	// The SFTP server correctly passes the error from the underlying filesystem.
-
-	// Create a directory and verify we can at least create it
+	// Create and remove an empty directory
 	err = client.Mkdir("/test_remove_dir")
 	if err != nil {
 		t.Fatalf("Mkdir failed: %v", err)
 	}
 
-	// Verify directory exists
-	info, err := client.Stat("/test_remove_dir")
+	// Verify directory is empty
+	entries, err := client.ReadDir("/test_remove_dir")
 	if err != nil {
-		t.Fatalf("Stat directory failed: %v", err)
+		t.Fatalf("ReadDir failed: %v", err)
 	}
-	if !info.IsDir() {
-		t.Error("Expected directory")
+	if len(entries) != 0 {
+		t.Fatalf("Directory should be empty, has %d entries", len(entries))
+	}
+
+	err = client.RemoveDirectory("/test_remove_dir")
+	if err != nil {
+		t.Fatalf("RemoveDirectory failed: %v", err)
+	}
+
+	_, err = client.Stat("/test_remove_dir")
+	if err == nil {
+		t.Error("Directory should not exist after remove")
 	}
 }
 

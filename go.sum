@@ -6,8 +6,8 @@ github.com/absfs/inode v0.0.0-20251208170702-9db24ab95ae4 h1:on/poHeOcUsAivcRifj
 github.com/absfs/inode v0.0.0-20251208170702-9db24ab95ae4/go.mod h1:98Uz4QOknMBXXWwXUIs2TzSwuz+9mbSAKASbwF1eld8=
 github.com/absfs/lockfs v0.0.0-20251124210544-241704814c03 h1:CnVf8nV/DHhbspnqdiF/KYcenfIDT4zcNhJY7w3PdUE=
 github.com/absfs/lockfs v0.0.0-20251124210544-241704814c03/go.mod h1:HVN3eRlj4K900z7171bfd7cUM2iyUM8q0YetQDgfbOY=
-github.com/absfs/memfs v0.0.0-20251208202300-cbb7a1d8f473 h1:2trzMY+oUsefgZgPgwAGlY10SXhadAUOR0FhJZOjrsQ=
-github.com/absfs/memfs v0.0.0-20251208202300-cbb7a1d8f473/go.mod h1:QU7ybM+nxDnWEYxAeBOrixMS97lAkpMf4jSGtXq4l3M=
+github.com/absfs/memfs v0.0.0-20251208230030-9f9671a4d047 h1:PqRV5pFFAIa1Otq5ccZZnAuem9UippB9ENAkoEGemSk=
+github.com/absfs/memfs v0.0.0-20251208230030-9f9671a4d047/go.mod h1:QU7ybM+nxDnWEYxAeBOrixMS97lAkpMf4jSGtXq4l3M=
 github.com/absfs/osfs v0.1.0-fastwalk h1:dEHAusiK/K8ROQgohL25q+cyqbiMXzSt1pgR3nbhNEg=
 github.com/absfs/osfs v0.1.0-fastwalk/go.mod h1:IIzwVILCbb3j0VHjcAQ7Xwpdz1h57eUzZil7DCIel/c=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
