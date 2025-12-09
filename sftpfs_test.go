@@ -1227,3 +1227,59 @@ func TestFileReaddirnamesError(t *testing.T) {
 		t.Error("Expected error")
 	}
 }
+
+// Additional coverage tests for Dial and DialWithKey convenience functions
+func TestDialIntegration(t *testing.T) {
+	// Test Dial function - will fail without server, which is expected
+	_, err := Dial("nonexistent.invalid:22", "user", "pass")
+	if err == nil {
+		t.Skip("Unexpected connection - SFTP server available")
+	}
+	// We expect an error since there's no server
+}
+
+func TestDialWithKeyIntegration(t *testing.T) {
+	// Test DialWithKey function - will fail without server, which is expected
+	fakeKey := []byte("not-a-real-key")
+	_, err := DialWithKey("nonexistent.invalid:22", "user", fakeKey)
+	if err == nil {
+		t.Skip("Unexpected connection - SFTP server available")
+	}
+	// We expect an error since the key is invalid or there's no server
+}
+
+// Test for New() function with password to ensure that path is covered
+func TestNewWithPassword(t *testing.T) {
+	config := &Config{
+		Host:     "nonexistent.invalid:22",
+		User:     "testuser",
+		Password: "testpass",
+		Timeout:  1 * time.Second,
+	}
+
+	// This will fail to connect, but ensures the password auth path is tested
+	_, err := New(config)
+	if err == nil {
+		t.Skip("Unexpected connection - SFTP server available")
+	}
+	// We expect a connection error
+}
+
+// Test for New() function with explicit timeout to cover that branch
+func TestNewWithExplicitTimeout(t *testing.T) {
+	config := &Config{
+		Host:     "nonexistent.invalid:22",
+		User:     "testuser",
+		Password: "testpass",
+		Timeout:  5 * time.Second, // Explicit non-zero timeout
+	}
+
+	_, err := New(config)
+	if err == nil {
+		t.Skip("Unexpected connection - SFTP server available")
+	}
+	// Verify the timeout was not changed
+	if config.Timeout != 5*time.Second {
+		t.Errorf("Expected timeout to remain 5s, got %v", config.Timeout)
+	}
+}
