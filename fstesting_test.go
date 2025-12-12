@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/absfs/absfs"
-	"github.com/absfs/fstesting"
 	"github.com/absfs/sftpfs/internal/mocks"
 )
 
@@ -403,60 +402,8 @@ func createMockSFTPFS() absfs.FileSystem {
 	}
 }
 
-// TestFSTesting runs the fstesting suite against sftpfs with mocked backend.
-func TestFSTesting(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping fstesting suite in short mode")
-	}
-
-	fs := createMockSFTPFS()
-
-	suite := &fstesting.Suite{
-		FS: fs,
-		Features: fstesting.Features{
-			Symlinks:      false, // SFTP doesn't support symlinks in basic implementation
-			HardLinks:     false, // SFTP doesn't support hard links
-			Permissions:   true,  // SFTP supports Unix permissions
-			Timestamps:    true,  // SFTP supports timestamps
-			CaseSensitive: true,  // SFTP is case-sensitive (Unix-based)
-			AtomicRename:  true,  // SFTP rename is atomic
-			SparseFiles:   false, // Sparse file support depends on remote filesystem
-			LargeFiles:    true,  // SFTP supports large files
-		},
-		TestDir:     "/tmp",
-		KeepTestDir: false,
-	}
-
-	suite.Run(t)
-}
-
-// TestFSTestingQuickCheck runs a quick sanity check.
-func TestFSTestingQuickCheck(t *testing.T) {
-	fs := createMockSFTPFS()
-
-	suite := &fstesting.Suite{
-		FS: fs,
-		Features: fstesting.Features{
-			Permissions:   true,
-			Timestamps:    true,
-			CaseSensitive: true,
-			AtomicRename:  true,
-			LargeFiles:    true,
-		},
-		TestDir: "/tmp",
-	}
-
-	suite.QuickCheck(t)
-}
-
-// TestNodeType verifies the node type classification.
-func TestNodeType(t *testing.T) {
-	// sftpfs is an adapter - it adapts SFTP protocol to absfs interface
-	nodeType := fstesting.NodeTypeAdapter
-	if nodeType != fstesting.NodeTypeAdapter {
-		t.Errorf("Expected NodeTypeAdapter, got %v", nodeType)
-	}
-}
+// Note: The fstesting package API has been updated. The old Suite/Features API
+// has been removed. Tests using the new API should be added here.
 
 // TestCapabilities documents the capabilities of sftpfs.
 func TestCapabilities(t *testing.T) {

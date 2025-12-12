@@ -1,6 +1,7 @@
 package sftpfs
 
 import (
+	iofs "io/fs"
 	"os"
 )
 
@@ -100,4 +101,18 @@ func (f *File) Readdirnames(n int) ([]string, error) {
 		names[i] = info.Name()
 	}
 	return names, nil
+}
+
+// ReadDir reads the directory and returns fs.DirEntry values.
+func (f *File) ReadDir(n int) ([]iofs.DirEntry, error) {
+	infos, err := f.Readdir(n)
+	if err != nil {
+		return nil, err
+	}
+
+	entries := make([]iofs.DirEntry, len(infos))
+	for i, info := range infos {
+		entries[i] = &dirEntry{info: info}
+	}
+	return entries, nil
 }
