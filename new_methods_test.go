@@ -1,8 +1,8 @@
 package sftpfs
 
 import (
-	"testing"
 	"os"
+	"testing"
 
 	"github.com/absfs/sftpfs/internal/mocks"
 )
