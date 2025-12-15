@@ -2,7 +2,7 @@ package sftpfs
 
 import (
 	"os"
-	"path/filepath"
+	stdpath "path"
 	"strings"
 	"testing"
 	"time"
@@ -74,7 +74,7 @@ func (c *enhancedMockSFTPClient) OpenFile(path string, f int) (sftpFileInterface
 
 	// Create directory entry if creating a new file
 	if f&os.O_CREATE != 0 {
-		dir := filepath.Dir(path)
+		dir := stdpath.Dir(path)
 		if dir != "." && dir != "/" {
 			c.ensureDirExists(dir)
 		}
@@ -90,7 +90,7 @@ func (c *enhancedMockSFTPClient) Mkdir(path string) error {
 	}
 
 	// Ensure parent directory exists
-	parent := filepath.Dir(path)
+	parent := stdpath.Dir(path)
 	if parent != "." && parent != "/" {
 		c.ensureDirExists(parent)
 	}
@@ -152,7 +152,7 @@ func (c *enhancedMockSFTPClient) ReadDir(path string) ([]os.FileInfo, error) {
 
 	// Find all files in this directory
 	for filePath, file := range c.files {
-		dir := filepath.Dir(filePath)
+		dir := stdpath.Dir(filePath)
 		if dir == path {
 			mode := c.permissions[filePath]
 			if mode == 0 {
@@ -163,7 +163,7 @@ func (c *enhancedMockSFTPClient) ReadDir(path string) ([]os.FileInfo, error) {
 				modTime = time.Now()
 			}
 			entries = append(entries, &mocks.MockFileInfo{
-				FileName:    filepath.Base(filePath),
+				FileName:    stdpath.Base(filePath),
 				FileSize:    int64(len(file.Data)),
 				FileMode:    mode,
 				FileModTime: modTime,
@@ -177,7 +177,7 @@ func (c *enhancedMockSFTPClient) ReadDir(path string) ([]os.FileInfo, error) {
 		if dirPath == path || dirPath == "/" {
 			continue
 		}
-		parent := filepath.Dir(dirPath)
+		parent := stdpath.Dir(dirPath)
 		if parent == path {
 			mode := c.permissions[dirPath]
 			if mode == 0 {
@@ -190,7 +190,7 @@ func (c *enhancedMockSFTPClient) ReadDir(path string) ([]os.FileInfo, error) {
 				modTime = time.Now()
 			}
 			entries = append(entries, &mocks.MockFileInfo{
-				FileName:    filepath.Base(dirPath),
+				FileName:    stdpath.Base(dirPath),
 				FileIsDir:   true,
 				FileMode:    mode,
 				FileModTime: modTime,
@@ -229,9 +229,9 @@ func (c *enhancedMockSFTPClient) Stat(path string) (os.FileInfo, error) {
 			modTime = time.Now()
 		}
 
-		baseName := filepath.Base(path)
+		baseName := stdpath.Base(path)
 		if originalPath != path && strings.HasSuffix(originalPath, "/") {
-			baseName = filepath.Base(originalPath)
+			baseName = stdpath.Base(originalPath)
 		}
 
 		return &mocks.MockFileInfo{
@@ -256,9 +256,9 @@ func (c *enhancedMockSFTPClient) Stat(path string) (os.FileInfo, error) {
 			modTime = time.Now()
 		}
 
-		baseName := filepath.Base(path)
+		baseName := stdpath.Base(path)
 		if originalPath != path && strings.HasSuffix(originalPath, "/") {
-			baseName = filepath.Base(strings.TrimSuffix(originalPath, "/"))
+			baseName = stdpath.Base(strings.TrimSuffix(originalPath, "/"))
 		}
 
 		return &mocks.MockFileInfo{
@@ -278,7 +278,7 @@ func (c *enhancedMockSFTPClient) ensureDirExists(path string) {
 	}
 
 	// Ensure all parent directories exist
-	parent := filepath.Dir(path)
+	parent := stdpath.Dir(path)
 	if parent != "." && parent != "/" {
 		c.ensureDirExists(parent)
 	}
@@ -341,7 +341,7 @@ func (fs *mockFileSystemWrapper) MkdirAll(path string, perm os.FileMode) error {
 	}
 
 	// Create parent first
-	parent := filepath.Dir(path)
+	parent := stdpath.Dir(path)
 	if parent != "." && parent != "/" {
 		if err := fs.MkdirAll(parent, perm); err != nil {
 			return err
@@ -437,7 +437,8 @@ func TestWithPathVariations(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Ensure parent directory exists
-			parent := filepath.Dir(tc.path)
+			// Use stdpath.Dir (not filepath.Dir) since SFTP uses Unix-style paths
+			parent := stdpath.Dir(tc.path)
 			if !strings.Contains(parent, "nested") {
 				fs.MkdirAll(parent, 0755)
 			} else {
@@ -445,7 +446,7 @@ func TestWithPathVariations(t *testing.T) {
 				parts := strings.Split(strings.Trim(parent, "/"), "/")
 				current := "/"
 				for _, part := range parts {
-					current = filepath.Join(current, part)
+					current = stdpath.Join(current, part)
 					fs.MkdirAll(current, 0755)
 				}
 			}
